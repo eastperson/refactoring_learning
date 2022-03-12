@@ -22,6 +22,10 @@ public class StudyDashboard {
 
     public StudyDashboard(int totalNumberOfEvents) {
         this.totalNumberOfEvents = totalNumberOfEvents;
+
+        // 동시성 문제를 해결하기 위해 작업
+        // ArrayList 를 사용하면 concurrency 문제가 발생할 가능성이 있다.
+        // CopyOnWriteArrayList 는 작업할 때 문제가 발생할 경우를 대비해 작업을 save 해주는 클래스이다.
         participants = new CopyOnWriteArrayList<>();
         firstParticipantsForEachEvent = new Participant[this.totalNumberOfEvents];
     }
@@ -34,7 +38,20 @@ public class StudyDashboard {
     private void print() throws IOException, InterruptedException {
         GHRepository ghRepository = getGhRepository();
 
+        // 동시성 이슈
+        checkGithubIssues(ghRepository);
+
+        // 그 이후에 작업 진행
+       new StudyPrinter(this.totalNumberOfEvents, this.participants).execute();
+        printFirstParticipants();
+    }
+
+    // 동시성 문제를 하나의 메서드로 묶어 놓는다.
+    private void checkGithubIssues(GHRepository ghRepository) throws InterruptedException {
+        // 쓰레드를 8개가 동시에 작업
         ExecutorService service = Executors.newFixedThreadPool(8);
+
+        // 총 15개의 쓰레드를 만들어 작업을 진행한다.
         CountDownLatch latch = new CountDownLatch(totalNumberOfEvents);
 
         for (int index = 1 ; index <= totalNumberOfEvents ; index++) {
@@ -43,22 +60,12 @@ public class StudyDashboard {
                 @Override
                 public void run() {
                     try {
+                        // 성능의 bottleneck
                         GHIssue issue = ghRepository.getIssue(eventId);
                         List<GHIssueComment> comments = issue.getComments();
-                        Date firstCreatedAt = null;
-                        Participant first = null;
-
-                        for (GHIssueComment comment : comments) {
-                            Participant participant = findParticipant(comment.getUserName(), participants);
-                            participant.setHomeworkDone(eventId);
-
-                            if (firstCreatedAt == null || comment.getCreatedAt().before(firstCreatedAt)) {
-                                firstCreatedAt = comment.getCreatedAt();
-                                first = participant;
-                            }
-                        }
-
-                        firstParticipantsForEachEvent[eventId - 1] = first;
+                        checkHomework(comments, eventId);
+                        firstParticipantsForEachEvent[eventId - 1] = findFirst(comments, participants);
+                        // 작업 완료되면 latch 카운트 다운
                         latch.countDown();
                     } catch (IOException e) {
                         throw new IllegalArgumentException(e);
@@ -67,11 +74,33 @@ public class StudyDashboard {
             });
         }
 
+        // latch 가 완료가 되는 것을 기다리고
         latch.await();
-        service.shutdown();
 
-        new StudyPrinter(this.totalNumberOfEvents, this.participants).execute();
-        printFirstParticipants();
+        // 완료되면 shut down
+        service.shutdown();
+    }
+
+    private Participant findFirst(List<GHIssueComment> comments, List<Participant> participants) throws IOException {
+        Participant first = null;
+        Date firstCreatedAt = null;
+        for (GHIssueComment comment : comments) {
+            // 성능의 bottleneck
+            Participant participant = findParticipant(comment.getUserName(), participants);
+
+            if (firstCreatedAt == null || comment.getCreatedAt().before(firstCreatedAt)) {
+                firstCreatedAt = comment.getCreatedAt();
+                first = participant;
+            }
+        }
+        return first;
+    }
+
+    private void checkHomework(List<GHIssueComment> comments, int eventId) {
+        for (GHIssueComment comment : comments) {
+            Participant participant = findParticipant(comment.getUserName(), participants);
+            participant.setHomeworkDone(eventId);
+        }
     }
 
     private void printFirstParticipants() {
@@ -106,5 +135,4 @@ public class StudyDashboard {
     private boolean isNewParticipant(String username, List<Participant> participants) {
         return participants.stream().noneMatch(p -> p.username().equals(username));
     }
-
 }

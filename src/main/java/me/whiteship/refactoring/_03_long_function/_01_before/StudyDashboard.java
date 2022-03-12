@@ -22,6 +22,7 @@ public class StudyDashboard {
         studyDashboard.print();
     }
 
+    // 참가자의 참석율을 계산하는 로직
     private void print() throws IOException, InterruptedException {
         GitHub gitHub = GitHub.connect();
         GHRepository repository = gitHub.getRepository("whiteship/live-study");
@@ -72,15 +73,21 @@ public class StudyDashboard {
             writer.print(header(totalNumberOfEvents, participants.size()));
 
             participants.forEach(p -> {
-                long count = p.homework().values().stream()
-                        .filter(v -> v == true)
-                        .count();
-                double rate = count * 100 / totalNumberOfEvents;
-
-                String markdownForHomework = String.format("| %s %s | %.2f%% |\n", p.username(), checkMark(p, totalNumberOfEvents), rate);
+                String markdownForHomework = getMarkdownForParticipant(totalNumberOfEvents, p);
                 writer.print(markdownForHomework);
             });
         }
+    }
+
+    private double getRate(int totalNumberOfEvents, Participant p) {
+        long count = p.homework().values().stream()
+                .filter(v -> v == true)
+                .count();
+        return count * 100 / totalNumberOfEvents;
+    }
+
+    private String getMarkdownForParticipant(int totalNumberOfEvents, Participant p) {
+        return String.format("| %s %s | %.2f%% |\n", p.username(), checkMark(p, totalNumberOfEvents), getRate(totalNumberOfEvents, p));
     }
 
     /**

@@ -6,12 +6,24 @@ public class Employee {
 
     private String name;
 
-    private String type;
+    private String typeValue;
+
+    private EmployeeType type;
 
     public Employee(String name, String type) {
         this.validate(type);
         this.name = name;
-        this.type = type;
+        this.typeValue = type;
+        this.type = this.employeeType(typeValue);
+    }
+
+    private EmployeeType employeeType(String typeValue) {
+        return switch (typeValue) {
+            case "engineer" -> new Engineer();
+            case "manager" -> new Manager();
+            case "salesman" -> new Salesman();
+            default -> throw new IllegalArgumentException(typeValue);
+        };
     }
 
     private void validate(String type) {
@@ -22,14 +34,14 @@ public class Employee {
     }
 
     public String capitalizedType() {
-        return this.type.substring(0, 1).toUpperCase() + this.type.substring(1).toLowerCase();
+        return this.type.capitalizedType();
     }
 
     @Override
     public String toString() {
         return "Employee{" +
                 "name='" + name + '\'' +
-                ", type='" + type + '\'' +
+                ", type='" + typeValue + '\'' +
                 '}';
     }
 }

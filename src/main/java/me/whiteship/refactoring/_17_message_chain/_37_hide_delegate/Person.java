@@ -14,8 +14,8 @@ public class Person {
         return name;
     }
 
-    public Department getDepartment() {
-        return department;
+    public Person getManager() {
+        return this.department.getManager();
     }
 
     public void setDepartment(Department department) {

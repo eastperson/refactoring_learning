@@ -5,7 +5,11 @@ public class Site {
     private Customer customer;
 
     public Site(Customer customer) {
-        this.customer = customer;
+        if (customer.isUnknown()) {
+            this.customer = new UnknownCustomer();
+        } else {
+            this.customer = customer;
+        }
     }
 
     public Customer getCustomer() {

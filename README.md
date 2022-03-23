@@ -11,4 +11,4 @@
 
 ## Review Content
 
-[책 정리](https://valuable-parsnip-9b0.notion.site/cb142c6ed9fe4d0e9839e500774cd545)
+[강의 정리](https://valuable-parsnip-9b0.notion.site/cb142c6ed9fe4d0e9839e500774cd545)
